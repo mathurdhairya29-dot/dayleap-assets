@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+@keyframes catrun { from { background-position: 0 0; } to { background-position: -3040px 0; } }
+body { margin: 0; }
+a { color: #4a5568; } a:hover { color: #1a202c; }
+</style>
+</helmet>
+<div style="min-height: 100vh; display: grid; place-items: center; background: #f7f6f3; font-family: ui-monospace, 'SF Mono', Menlo, monospace;">
+  <div ref="{{ spriteRef }}" style="width: 380px; height: 360px; background-image: url('cat-sheet-v3.png'); background-repeat: no-repeat; background-size: 3040px 360px; image-rendering: pixelated; animation: catrun 1s steps(8) infinite; transform-origin: bottom center;"></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;fps&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;default&quot;:4,&quot;min&quot;:1,&quot;max&quot;:24,&quot;step&quot;:1,&quot;tsType&quot;:&quot;number&quot;,&quot;unit&quot;:&quot;fps&quot;},&quot;scale&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:1,&quot;options&quot;:[1,2,3],&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Display&quot;},&quot;playing&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Display&quot;}}">
+class Component extends DCLogic {
+  constructor(p){ super(p); this.spriteRef = React.createRef(); }
+  apply() {
+    const el = this.spriteRef.current; if (!el) return;
+    const fps = this.props.fps ?? 8;
+    const scale = this.props.scale ?? 1;
+    el.style.animationDuration = (8 / fps) + 's';
+    el.style.animationPlayState = (this.props.playing ?? true) ? 'running' : 'paused';
+    el.style.transform = 'scale(' + scale + ')';
+  }
+  componentDidMount(){ this.apply(); }
+  componentDidUpdate(){ this.apply(); }
+  renderVals(){ return { spriteRef: this.spriteRef }; }
+}
+</script>
+</body>
+</html>
