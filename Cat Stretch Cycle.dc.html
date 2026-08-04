@@ -9,22 +9,22 @@
 <x-dc>
 <helmet>
 <style>
-@keyframes catidle36 { from { background-position: 0 0; } to { background-position: -5400px 0; } }
+@keyframes catstretch { from { background-position: 0 0; } to { background-position: -3200px 0; } }
 body { margin: 0; }
 a { color: #4a5568; } a:hover { color: #1a202c; }
 </style>
 </helmet>
 <div style="min-height: 100vh; display: grid; place-items: center; background: #f7f6f3;">
-  <div ref="{{ spriteRef }}" style="width: 150px; height: 175px; background-image: url('cat-idle36-sheet.png'); background-repeat: no-repeat; background-size: 5400px 175px; image-rendering: pixelated; animation: catidle36 4.5s steps(36) infinite; transform-origin: center;"></div>
+  <div ref="{{ spriteRef }}" style="width: 200px; height: 200px; background-image: url('cat-stretch-sheet.png'); background-repeat: no-repeat; background-size: 3200px 200px; image-rendering: pixelated; animation: catstretch 2s steps(16) infinite; transform-origin: center;"></div>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props="{&quot;fps&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;default&quot;:8,&quot;min&quot;:1,&quot;max&quot;:24,&quot;step&quot;:1,&quot;tsType&quot;:&quot;number&quot;,&quot;unit&quot;:&quot;fps&quot;},&quot;scale&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:2,&quot;options&quot;:[1,2,3],&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Display&quot;},&quot;pingPong&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Display&quot;},&quot;playing&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Display&quot;}}">
+<script type="text/x-dc" data-dc-script data-props="{&quot;fps&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;default&quot;:4,&quot;min&quot;:1,&quot;max&quot;:24,&quot;step&quot;:1,&quot;tsType&quot;:&quot;number&quot;,&quot;unit&quot;:&quot;fps&quot;},&quot;scale&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:2,&quot;options&quot;:[1,2,3],&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Display&quot;},&quot;pingPong&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Display&quot;},&quot;playing&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Display&quot;}}">
 class Component extends DCLogic {
   constructor(p){ super(p); this.spriteRef = React.createRef(); }
   apply() {
     const el = this.spriteRef.current; if (!el) return;
     const fps = this.props.fps ?? 8;
-    el.style.animationDuration = (36 / fps) + 's';
+    el.style.animationDuration = (16 / fps) + 's';
     el.style.animationDirection = (this.props.pingPong ?? false) ? 'alternate' : 'normal';
     el.style.animationPlayState = (this.props.playing ?? true) ? 'running' : 'paused';
     el.style.transform = 'scale(' + (this.props.scale ?? 2) + ')';
