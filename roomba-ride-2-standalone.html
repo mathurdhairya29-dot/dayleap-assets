@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Cat Roomba Ride 2</title>
+<style>
+  html, body { margin: 0; height: 100%; }
+  body { display: grid; place-items: center; background: #f7f6f3; }
+  #stage { position: relative; width: 300px; height: 210px; display: grid; place-items: center; overflow: hidden; }
+  #track { position: relative; width: 110px; height: 130px; }
+  #lines { position: absolute; left: 0; top: 72px; width: 110px; height: 30px; opacity: 0; pointer-events: none; }
+  #lines i { position: absolute; display: block; }
+  #sprite {
+    position: absolute; left: 0; top: 0; width: 110px; height: 130px;
+    background-image: url('cat-roomba22-sheet.png');
+    background-repeat: no-repeat;
+    background-size: 2420px 130px;
+    image-rendering: pixelated;
+    transform-origin: 50% 100%;
+  }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="track">
+    <div id="lines">
+      <i style="left:-24px; top:3px;  width:16px; height:3px; background:#b9bcc4;"></i>
+      <i style="left:-31px; top:13px; width:22px; height:3px; background:#c9ccd3;"></i>
+      <i style="left:-21px; top:23px; width:13px; height:3px; background:#d3d6dc;"></i>
+    </div>
+    <div id="sprite"></div>
+  </div>
+</div>
+
+<script>
+var FRAME_W   = 110;  // frame width in the sheet
+var N         = 11;   // frames per direction (0-10 right, 11-21 mirrored left)
+var TRAVEL    = 44;
+var TRAVEL_MS = 1000;
+var PAUSE_MS  = 175;
+
+var sprite = document.getElementById('sprite');
+var track  = document.getElementById('track');
+var lines  = document.getElementById('lines');
+var t0 = null;
+
+function ease(u)  { return u * u * (3 - 2 * u); }
+function dEase(u) { return 6 * u * (1 - u); }
+
+function loop(now) {
+  requestAnimationFrame(loop);
+  if (t0 === null) t0 = now;
+
+  var cycle = 2 * TRAVEL_MS + 2 * PAUSE_MS;
+  var t = (now - t0) % cycle;
+
+  var phase, p;
+  if (t < TRAVEL_MS)                     { phase = 0; p = t / TRAVEL_MS; }
+  else if (t < TRAVEL_MS + PAUSE_MS)     { phase = 1; p = (t - TRAVEL_MS) / PAUSE_MS; }
+  else if (t < 2 * TRAVEL_MS + PAUSE_MS) { phase = 2; p = (t - TRAVEL_MS - PAUSE_MS) / TRAVEL_MS; }
+  else                                   { phase = 3; p = (t - 2 * TRAVEL_MS - PAUSE_MS) / PAUSE_MS; }
+
+  var x, vel, accel;
+  if (phase === 0)      { x = -TRAVEL/2 + TRAVEL * ease(p); vel =  dEase(p); accel =  (1 - 2*p); }
+  else if (phase === 1) { x =  TRAVEL/2;                    vel = 0;         accel = 0; }
+  else if (phase === 2) { x =  TRAVEL/2 - TRAVEL * ease(p); vel = -dEase(p); accel = -(1 - 2*p); }
+  else                  { x = -TRAVEL/2;                    vel = 0;         accel = 0; }
+
+  var spd = Math.abs(vel);
+  var moving = spd > 0.02;
+
+  var idx;
+  if (phase === 0)      idx = Math.min(N - 1, Math.floor(p * N));
+  else if (phase === 2) idx = N + Math.min(N - 1, Math.floor(p * N));
+  else if (phase === 1) idx = N - 1;
+  else                  idx = 2 * N - 1;
+
+  var vib  = moving ? (Math.round(now / 55) % 2 ? 1 : 0) : 0;
+  var bob  = moving ? Math.round(Math.sin(now / 90) * 1.5) : Math.round(Math.sin(now / 320));
+  var lean = -accel * spd * 2.2;
+  var lag  = -Math.sign(vel || 1) * Math.max(0, 1 - p * 3) * (phase === 0 || phase === 2 ? 2 : 0);
+
+  track.style.transform  = 'translateX(' + x.toFixed(2) + 'px)';
+  sprite.style.backgroundPosition = (-idx * FRAME_W) + 'px 0';
+  sprite.style.transform = 'translate(' + (vib + lag).toFixed(2) + 'px,' + (bob - vib) + 'px) skewX(' + lean.toFixed(2) + 'deg)';
+
+  lines.style.opacity   = moving ? Math.min(1, spd * 0.75).toFixed(2) : '0';
+  lines.style.transform = vel < 0 ? 'scaleX(-1) translateX(-110px)' : 'none';
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
