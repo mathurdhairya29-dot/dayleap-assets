@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body { margin: 0; }
+a { color: #4a5568; } a:hover { color: #1a202c; }
+</style>
+</helmet>
+<div style="min-height: 100vh; display: grid; place-items: center; background: #f7f6f3;">
+  <div ref="{{ spriteRef }}" style="width: 320px; height: 290px; background-image: url('cat-box-story-sheet.png'); background-repeat: no-repeat; background-size: 8320px 290px; background-position: 0 0; image-rendering: pixelated; transform-origin: center;"></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;fps&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;default&quot;:4,&quot;min&quot;:1,&quot;max&quot;:24,&quot;step&quot;:1,&quot;tsType&quot;:&quot;number&quot;,&quot;unit&quot;:&quot;fps&quot;},&quot;scale&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:1,&quot;options&quot;:[1,2,3],&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Display&quot;},&quot;playing&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Display&quot;}}">
+const FW = 320, INTRO = 10, TOTAL = 26;
+
+class Component extends DCLogic {
+  constructor(p){ super(p); this.spriteRef = React.createRef(); this.i = 0; }
+
+  tick = () => {
+    const el = this.spriteRef.current;
+    if (el) el.style.backgroundPosition = (-this.i * FW) + 'px 0';
+    this.i = this.i + 1 >= TOTAL ? INTRO : this.i + 1;
+  };
+
+  start() {
+    clearInterval(this.timer);
+    if (this.props.playing ?? true) {
+      this.timer = setInterval(this.tick, 1000 / (this.props.fps ?? 8));
+    }
+  }
+
+  componentDidMount(){
+    const el = this.spriteRef.current;
+    if (el) el.style.transform = 'scale(' + (this.props.scale ?? 1) + ')';
+    this.start();
+  }
+
+  componentDidUpdate(prev){
+    const el = this.spriteRef.current;
+    if (el) el.style.transform = 'scale(' + (this.props.scale ?? 1) + ')';
+    if (prev.fps !== this.props.fps || prev.playing !== this.props.playing) this.start();
+  }
+
+  componentWillUnmount(){ clearInterval(this.timer); }
+
+  renderVals(){ return { spriteRef: this.spriteRef }; }
+}
+</script>
+</body>
+</html>
