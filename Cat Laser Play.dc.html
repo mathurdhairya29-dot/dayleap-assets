@@ -140,12 +140,19 @@ class Component extends DCLogic {
     place(dot, here, jx, jy);
 
     if (t1 && t2) {
-      const a = this.posAt(ms - 55 * rate), b = this.posAt(ms - 115 * rate);
-      const p1 = (phase * 7) % 1, p2 = (phase * 11) % 1;
-      place(t1, a, w1 * Math.sin(2 * Math.PI * p1) * 0.9, w1 * Math.cos(2 * Math.PI * p1) * 0.6);
-      place(t2, b, w1 * Math.sin(2 * Math.PI * p2) * 0.8, w1 * Math.cos(2 * Math.PI * p2) * 0.5);
-      t1.style.opacity = '0.55';
-      t2.style.opacity = '0.25';
+      const lagA = 95, lagB = 190;
+      const a = this.posAt(ms - lagA), b = this.posAt(ms - lagB);
+      // only show a trail once the dot is actually travelling, and only once the
+      // sample has cleared the dot's own footprint — otherwise it washes it out
+      const prev = this.posAt(ms - 16);
+      const spd = Math.hypot(here.x - prev.x, here.y - prev.y);
+      const gate = Math.max(0, Math.min(1, (spd - 0.35) / 0.9));
+      const sepA = Math.hypot(here.x - a.x, here.y - a.y);
+      const sepB = Math.hypot(here.x - b.x, here.y - b.y);
+      place(t1, a, 0, 0);
+      place(t2, b, 0, 0);
+      t1.style.opacity = (gate * (sepA > 9 ? 0.4 : 0)).toFixed(2);
+      t2.style.opacity = (gate * (sepB > 16 ? 0.18 : 0)).toFixed(2);
     }
   }
 
