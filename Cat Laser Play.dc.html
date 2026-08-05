@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body { margin: 0; }
+a { color: #4a5568; } a:hover { color: #1a202c; }
+</style>
+</helmet>
+<div style="min-height: 100vh; display: grid; place-items: center; background: #f7f6f3;">
+  <div style="position: relative; width: 480px; height: 350px;">
+    <div ref="{{ trail2Ref }}" style="position: absolute; left: 0; top: 0; width: 34px; height: 24px; background-image: url('laser-dot.png'); background-repeat: no-repeat; background-size: 34px 24px; image-rendering: pixelated; opacity: 0;"></div>
+    <div ref="{{ trail1Ref }}" style="position: absolute; left: 0; top: 0; width: 34px; height: 24px; background-image: url('laser-dot.png'); background-repeat: no-repeat; background-size: 34px 24px; image-rendering: pixelated; opacity: 0;"></div>
+    <div ref="{{ dotRef }}" style="position: absolute; left: 0; top: 0; width: 34px; height: 24px; background-image: url('laser-dot.png'); background-repeat: no-repeat; background-size: 34px 24px; image-rendering: pixelated;"></div>
+    <div ref="{{ catRef }}" style="position: absolute; left: -16px; top: 0; width: 480px; height: 350px; background-image: url('cat-only24-sheet.png'); background-repeat: no-repeat; background-size: 11520px 350px; image-rendering: pixelated;"></div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;speed&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;default&quot;:1,&quot;min&quot;:0.4,&quot;max&quot;:2,&quot;step&quot;:0.1,&quot;tsType&quot;:&quot;number&quot;,&quot;unit&quot;:&quot;x&quot;,&quot;section&quot;:&quot;Motion&quot;},&quot;wobble&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;default&quot;:1,&quot;min&quot;:0,&quot;max&quot;:2.5,&quot;step&quot;:0.1,&quot;tsType&quot;:&quot;number&quot;,&quot;unit&quot;:&quot;x&quot;,&quot;section&quot;:&quot;Motion&quot;},&quot;playing&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Motion&quot;}}">
+class Component extends DCLogic {
+  constructor(p) {
+    super(p);
+    this.catRef = React.createRef();
+    this.dotRef = React.createRef();
+    this.trail1Ref = React.createRef();
+    this.trail2Ref = React.createRef();
+    this.t0 = null;
+    this.loop = this.loop.bind(this);
+
+    // [catFrame (1-based sheet cell), laserX, laserY, ms] — sprite-space coords
+    const B = [];
+    const at = (f, x, y, ms) => B.push([f, x, y, ms]);
+    // arc: sweep the dot around a centre, cat frames cycled across the sweep
+    const arc = (frames, cx, cy, rx, ry, a0, a1, steps, ms) => {
+      for (let i = 0; i < steps; i++) {
+        const a = a0 + (a1 - a0) * (i / steps);
+        at(frames[i % frames.length], cx + rx * Math.cos(a), cy + ry * Math.sin(a), ms);
+      }
+    };
+
+    // notice — dot drifts in from far right, low
+    at(24, 218, 160, 380); at(1, 206, 162, 340);
+    at(2, 194, 156, 300);  at(1, 184, 163, 300);
+
+    // tight ground circle, cat lowers its head to track it
+    arc([13, 13, 3, 3, 3, 3, 13, 13], 170, 152, 15, 11, -0.4, 5.9, 8, 135);
+
+    // stalk in as the dot creeps closer
+    at(4, 160, 158, 240); at(22, 152, 163, 230); at(5, 146, 157, 220);
+    at(6, 142, 162, 220); at(7, 138, 158, 260);
+
+    // reach ramp — dot slips away right as the paw arrives
+    at(6, 146, 163, 190); at(5, 156, 160, 170); at(3, 166, 162, 160);
+    at(9, 176, 159, 150); at(11, 186, 161, 150); at(20, 197, 157, 150);
+    at(10, 209, 160, 160); at(10, 218, 154, 210); at(20, 212, 161, 150);
+
+    // settle back down through the same poses
+    at(11, 201, 158, 160); at(9, 190, 162, 170);
+    at(3, 182, 157, 190);  at(13, 176, 161, 240);
+
+    // figure-eight up high — two counter-turning loops, cat watches
+    arc([15, 17, 14, 18, 12, 21], 176, 116, 26, 20, 1.9, -3.4, 8, 150);
+    arc([23, 15, 17, 14, 18, 12], 196, 142, 22, 17, 3.4, 9.0, 8, 150);
+
+    // dot dives low-left, quick bat
+    at(18, 150, 150, 200); at(19, 156, 143, 165); at(20, 168, 136, 150);
+    at(19, 181, 131, 165); at(18, 193, 139, 200);
+
+    // fast zigzag out, one last spin, home to the start
+    at(23, 200, 150, 150); at(8, 190, 144, 140); at(23, 202, 152, 140);
+    arc([8, 8, 23, 23, 1, 1], 204, 150, 19, 14, 3.1, 8.7, 6, 125);
+    at(24, 218, 160, 340); at(24, 218, 160, 340);
+
+    this.beats = B;
+    this.cum = [];
+    let acc = 0;
+    for (const b of this.beats) { this.cum.push(acc); acc += b[3]; }
+    this.total = acc;
+  }
+
+  componentDidMount() { this.raf = requestAnimationFrame(this.loop); }
+  componentWillUnmount() { cancelAnimationFrame(this.raf); }
+
+  // closed-loop Catmull-Rom through beat positions — continuous velocity, no stops
+  posAt(ms) {
+    const B = this.beats, n = B.length;
+    const t = ((ms % this.total) + this.total) % this.total;
+    let i = 0;
+    while (i < n - 1 && this.cum[i + 1] <= t) i++;
+    const u = (t - this.cum[i]) / B[i][3];
+    const p0 = B[(i - 1 + n) % n], p1 = B[i], p2 = B[(i + 1) % n], p3 = B[(i + 2) % n];
+    const cr = (a, b, c, d) =>
+      0.5 * ((2 * b) + (-a + c) * u + (2 * a - 5 * b + 4 * c - d) * u * u + (-a + 3 * b - 3 * c + d) * u * u * u);
+    return {
+      x: cr(p0[1], p1[1], p2[1], p3[1]),
+      y: cr(p0[2], p1[2], p2[2], p3[2]),
+      frame: p1[0]
+    };
+  }
+
+  loop(now) {
+    this.raf = requestAnimationFrame(this.loop);
+    if (this.t0 === null) this.t0 = now;
+    if (this.props.playing === false) return;
+
+    const S = 2, FW = 240;
+    const rate = this.props.speed ?? 1;
+    const ms = (now - this.t0) * rate;
+    const phase = (ms % this.total) / this.total;
+
+    const here = this.posAt(ms);
+
+    // micro-motion: two periodic loops so the dot never sits still, still seamless
+    const wob = this.props.wobble ?? 1;
+    const w1 = 2.6 * wob, w2 = 1.2 * wob;
+    const jx = w1 * Math.sin(2 * Math.PI * 7 * phase) + w2 * Math.sin(2 * Math.PI * 11 * phase + 1.1)
+             + 0.9 * wob * Math.sin(2 * Math.PI * 23 * phase + 0.4);
+    const jy = w1 * Math.cos(2 * Math.PI * 7 * phase) * 0.7 + w2 * Math.cos(2 * Math.PI * 13 * phase)
+             + 0.9 * wob * Math.cos(2 * Math.PI * 19 * phase + 2.2);
+
+    const cat = this.catRef.current, dot = this.dotRef.current;
+    const t1 = this.trail1Ref.current, t2 = this.trail2Ref.current;
+    if (!cat || !dot) return;
+
+    // breathing: 1px integer bob, no warping
+    const bob = Math.round(Math.sin(2 * Math.PI * 5 * phase)) * S;
+    cat.style.backgroundPosition = (-(here.frame - 1) * FW * S) + 'px 0';
+    cat.style.transform = 'translateY(' + bob + 'px)';
+
+    const place = (el, p, dx, dy) => {
+      el.style.transform = 'translate(' + Math.round((p.x + dx) * S - 17) + 'px,' +
+                                          Math.round((p.y + dy) * S - 12) + 'px)';
+    };
+    place(dot, here, jx, jy);
+
+    if (t1 && t2) {
+      const a = this.posAt(ms - 55 * rate), b = this.posAt(ms - 115 * rate);
+      const p1 = (phase * 7) % 1, p2 = (phase * 11) % 1;
+      place(t1, a, w1 * Math.sin(2 * Math.PI * p1) * 0.9, w1 * Math.cos(2 * Math.PI * p1) * 0.6);
+      place(t2, b, w1 * Math.sin(2 * Math.PI * p2) * 0.8, w1 * Math.cos(2 * Math.PI * p2) * 0.5);
+      t1.style.opacity = '0.55';
+      t2.style.opacity = '0.25';
+    }
+  }
+
+  renderVals() {
+    return {
+      catRef: this.catRef, dotRef: this.dotRef,
+      trail1Ref: this.trail1Ref, trail2Ref: this.trail2Ref
+    };
+  }
+}
+</script>
+</body>
+</html>
