@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body { margin: 0; }
+a { color: #4a5568; } a:hover { color: #1a202c; }
+</style>
+</helmet>
+<div style="min-height: 100vh; display: grid; place-items: center; background: #f7f6f3;">
+  <div style="position: relative; width: 340px; height: 260px; display: grid; place-items: center; overflow: hidden;">
+    <div ref="{{ trackRef }}" style="position: relative; width: 150px; height: 170px;">
+      <div ref="{{ linesRef }}" style="position: absolute; left: 0; top: 96px; width: 150px; height: 34px; opacity: 0; pointer-events: none;">
+        <div style="position: absolute; left: -30px; top: 4px; width: 20px; height: 3px; background: #b9bcc4;"></div>
+        <div style="position: absolute; left: -38px; top: 15px; width: 26px; height: 3px; background: #c9ccd3;"></div>
+        <div style="position: absolute; left: -26px; top: 26px; width: 16px; height: 3px; background: #d3d6dc;"></div>
+      </div>
+      <div ref="{{ spriteRef }}" style="position: absolute; left: 0; top: 0; width: 150px; height: 170px; background-image: url('cat-roomba16-sheet.png'); background-repeat: no-repeat; background-size: 2400px 170px; image-rendering: pixelated; transform-origin: 50% 100%;"></div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;travel&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;default&quot;:44,&quot;min&quot;:20,&quot;max&quot;:80,&quot;step&quot;:1,&quot;tsType&quot;:&quot;number&quot;,&quot;unit&quot;:&quot;px&quot;,&quot;section&quot;:&quot;Motion&quot;},&quot;speed&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;default&quot;:1,&quot;min&quot;:0.4,&quot;max&quot;:2,&quot;step&quot;:0.1,&quot;tsType&quot;:&quot;number&quot;,&quot;unit&quot;:&quot;x&quot;,&quot;section&quot;:&quot;Motion&quot;},&quot;pause&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;default&quot;:175,&quot;min&quot;:80,&quot;max&quot;:400,&quot;step&quot;:5,&quot;tsType&quot;:&quot;number&quot;,&quot;unit&quot;:&quot;ms&quot;,&quot;section&quot;:&quot;Motion&quot;},&quot;playing&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Motion&quot;}}">
+class Component extends DCLogic {
+  constructor(p) {
+    super(p);
+    this.trackRef = React.createRef();
+    this.spriteRef = React.createRef();
+    this.linesRef = React.createRef();
+    this.t0 = null;
+    this.loop = this.loop.bind(this);
+  }
+  componentDidMount() { this.raf = requestAnimationFrame(this.loop); }
+  componentWillUnmount() { cancelAnimationFrame(this.raf); }
+
+  loop(now) {
+    this.raf = requestAnimationFrame(this.loop);
+    if (this.t0 === null) this.t0 = now;
+    if (this.props.playing === false) { this.t0 += 0; return; }
+
+    const FW = 150;
+    const amp = this.props.travel ?? 44;
+    const travelMs = 1000 / ((this.props.speed ?? 1));
+    const pauseMs = this.props.pause ?? 175;
+    const cycle = 2 * travelMs + 2 * pauseMs;
+    const t = ((now - this.t0) % cycle);
+
+    // phase: 0 = moving right, 1 = pause right, 2 = moving left, 3 = pause left
+    let phase, p;
+    if (t < travelMs) { phase = 0; p = t / travelMs; }
+    else if (t < travelMs + pauseMs) { phase = 1; p = (t - travelMs) / pauseMs; }
+    else if (t < 2 * travelMs + pauseMs) { phase = 2; p = (t - travelMs - pauseMs) / travelMs; }
+    else { phase = 3; p = (t - 2 * travelMs - pauseMs) / pauseMs; }
+
+    // eased displacement, -amp/2 .. +amp/2, and its derivative (normalized speed)
+    const ease = (u) => u * u * (3 - 2 * u);
+    const dEase = (u) => 6 * u * (1 - u);
+    let x, vel, accel;
+    if (phase === 0)      { x = -amp / 2 + amp * ease(p);  vel =  dEase(p); accel =  (1 - 2 * p); }
+    else if (phase === 1) { x =  amp / 2;                  vel = 0;         accel = 0; }
+    else if (phase === 2) { x =  amp / 2 - amp * ease(p);  vel = -dEase(p); accel = -(1 - 2 * p); }
+    else                  { x = -amp / 2;                  vel = 0;         accel = 0; }
+
+    const spd = Math.abs(vel);            // 0 .. 1.5
+    const moving = spd > 0.02;
+
+    // frame set: 0-7 face right, 8-15 face left; hold on a settled frame while paused
+    let idx;
+    if (phase === 0)      idx = Math.min(7, Math.floor(p * 8));
+    else if (phase === 2) idx = 8 + Math.min(7, Math.floor(p * 8));
+    else if (phase === 1) idx = 7;
+    else                  idx = 15;
+
+    // 1px vibration while driving
+    const vib = moving ? (Math.round(now / 55) % 2 ? 1 : 0) : 0;
+    // 1-2px body bob, faster while driving
+    const bob = moving ? Math.round(Math.sin(now / 90) * 1.5) : Math.round(Math.sin(now / 320));
+    // lean: away from acceleration, upright at constant speed
+    const lean = -accel * spd * 2.2;
+    // tail/body lag on direction change, strongest right after a reversal
+    const lag = -Math.sign(vel || 1) * Math.max(0, 1 - p * 3) * (phase === 0 || phase === 2 ? 2.2 : 0);
+
+    const sp = this.spriteRef.current;
+    const tr = this.trackRef.current;
+    const ln = this.linesRef.current;
+    if (!sp || !tr) return;
+
+    tr.style.transform = 'translateX(' + x.toFixed(2) + 'px)';
+    sp.style.backgroundPosition = (-idx * FW) + 'px 0';
+    sp.style.transform = 'translate(' + (vib + lag).toFixed(2) + 'px,' + (bob - vib) + 'px) skewX(' + lean.toFixed(2) + 'deg)';
+
+    if (ln) {
+      ln.style.opacity = moving ? Math.min(1, spd * 0.75).toFixed(2) : '0';
+      ln.style.transform = vel < 0 ? 'scaleX(-1) translateX(-150px)' : 'none';
+    }
+  }
+
+  renderVals() {
+    return {
+      trackRef: this.trackRef,
+      spriteRef: this.spriteRef,
+      linesRef: this.linesRef
+    };
+  }
+}
+</script>
+</body>
+</html>
